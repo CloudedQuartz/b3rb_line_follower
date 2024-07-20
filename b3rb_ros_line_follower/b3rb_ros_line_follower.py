@@ -152,6 +152,7 @@ class LineFollower(Node):
 			print("stop sign detected")
 
 		if self.ramp_detected is True:
+			speed = SPEED_50_PERCENT
 			# TODO: participants need to decide action on detection of ramp/bridge.
 			print("ramp/bridge detected")
 
