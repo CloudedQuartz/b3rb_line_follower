@@ -21,6 +21,9 @@ from sensor_msgs.msg import Joy
 
 import math
 
+import numpy as np
+from sklearn.linear_model import LinearRegression
+
 from synapse_msgs.msg import EdgeVectors
 from synapse_msgs.msg import TrafficStatus
 from sensor_msgs.msg import LaserScan
@@ -42,6 +45,9 @@ SPEED_75_PERCENT = SPEED_25_PERCENT * 3
 
 THRESHOLD_OBSTACLE_VERTICAL = 1.0
 THRESHOLD_OBSTACLE_HORIZONTAL = 0.25
+
+MIN_POINTS_FOR_GROUND = 10  # Minimum number of points to consider for ground detection
+R_SQUARED_THRESHOLD = 0.9  # Minimum R-squared value for good line fit
 
 
 class LineFollower(Node):
@@ -181,9 +187,26 @@ class LineFollower(Node):
 		shield_horizontal = 1
 		theta = math.atan(shield_vertical / shield_horizontal)
 
-		# Get the middle half of the ranges array returned by the LIDAR.
-		length = float(len(message.ranges))
-		ranges = message.ranges[int(length / 4): int(3 * length / 4)]
+		# Filter out invalid range readings
+		valid_ranges = [r for r in message.ranges if message.range_min <= r < message.range_max]
+
+		# Get the middle half of the valid ranges
+		length = float(len(valid_ranges))
+		ranges = valid_ranges[int(length / 4): int(3 * length / 4)]
+
+		# Ramp detection using all ranges
+		if len(ranges) >= MIN_POINTS_FOR_GROUND:
+			angles = np.arange(len(ranges)) * message.angle_increment
+			x = np.array(ranges) * np.cos(angles)
+			y = np.array(ranges) * np.sin(angles)
+
+			reg = LinearRegression().fit(x.reshape(-1, 1), y)
+			r_squared = reg.score(x.reshape(-1, 1), y)
+
+			self.ramp_detected = r_squared > R_SQUARED_THRESHOLD
+		else:
+			self.ramp_detected = False
+
 
 		# Separate the ranges into the part in the front and the part on the sides.
 		length = float(len(ranges))
