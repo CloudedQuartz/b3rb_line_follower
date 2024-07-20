@@ -191,17 +191,21 @@ class LineFollower(Node):
 		theta = math.atan(shield_vertical / shield_horizontal)
 
 		# Filter out invalid range readings
-		valid_ranges = [r for r in message.ranges if message.range_min <= r < message.range_max]
+		# valid_ranges = [r for r in message.ranges if message.range_min <= r < message.range_max]
 
 		# Get the middle half of the valid ranges
-		length = float(len(valid_ranges))
-		ranges = valid_ranges[int(length / 4): int(3 * length / 4)]
+		length = float(len(message.ranges))
+		ranges = message.ranges[int(length / 4): int(3 * length / 4)]
+
+		# filter ranges now
+		#use message.ranges as we dont care about only middle half
+		valid_ranges = [r for r in message.ranges if message.range_min <= r < message.range_max]
 
 		# Ramp detection using all ranges
-		if len(ranges) >= MIN_POINTS_FOR_GROUND:
-			angles = np.arange(len(ranges)) * message.angle_increment
-			x = np.array(ranges) * np.cos(angles)
-			y = np.array(ranges) * np.sin(angles)
+		if len(valid_ranges) >= MIN_POINTS_FOR_GROUND:
+			angles = np.arange(len(valid_ranges)) * message.angle_increment
+			x = np.array(valid_ranges) * np.cos(angles)
+			y = np.array(valid_ranges) * np.sin(angles)
 
 			reg = LinearRegression().fit(x.reshape(-1, 1), y)
 			r_squared = reg.score(x.reshape(-1, 1), y)
