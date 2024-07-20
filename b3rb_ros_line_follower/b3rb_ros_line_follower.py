@@ -21,9 +21,6 @@ from sensor_msgs.msg import Joy
 
 import math
 
-import numpy as np
-from sklearn.linear_model import LinearRegression
-
 from synapse_msgs.msg import EdgeVectors
 from synapse_msgs.msg import TrafficStatus
 from sensor_msgs.msg import LaserScan
@@ -44,12 +41,8 @@ SPEED_50_PERCENT = SPEED_25_PERCENT * 2
 SPEED_75_PERCENT = SPEED_25_PERCENT * 3
 
 THRESHOLD_OBSTACLE_VERTICAL = 1.0
-THRESHOLD_OBSTACLE_HORIZONTAL = 0.25 / 2
+THRESHOLD_OBSTACLE_HORIZONTAL = 0.25
 
-SPEED_MULT_DEFAULT = 1.0
-
-MIN_POINTS_FOR_GROUND = 10  # Minimum number of points to consider for ground detection
-R_SQUARED_THRESHOLD = 0.9  # Minimum R-squared value for good line fit
 
 class LineFollower(Node):
 	""" Initializes line follower node with the required publishers and subscriptions.
@@ -92,10 +85,6 @@ class LineFollower(Node):
 		self.obstacle_detected = False
 
 		self.ramp_detected = False
-
-		# speed multiplier (primitive ESC)
-		self.speed_mult = SPEED_MULT_DEFAULT
-		self.prev_turn = TURN_MIN
 
 	""" Operates the rover in manual mode by publishing on /cerebri/in/joy.
 
@@ -143,17 +132,6 @@ class LineFollower(Node):
 			# Calculate the magnitude of the x-component of the vector.
 			deviation = vectors.vector_1[1].x - vectors.vector_1[0].x
 			turn = deviation / vectors.image_width
-			if turn < self.prev_turn and self.speed_mult < 1.5:
-				print("ESC", self.speed_mult)
-				self.speed_mult += 0.03
-			elif turn >= self.prev_turn and self.speed_mult > 0.5:
-				print("ESC BRAKING")
-				self.speed_mult -= 0.03
-			speed = (1.5 * TURN_MAX - turn) / (1.5 * TURN_MAX)
-			speed *= self.speed_mult
-			self.prev_turn = turn
-
-		
 
 		if (vectors.vector_count == 2):  # straight.
 			# Calculate the middle point of the x-components of the vectors.
@@ -162,21 +140,16 @@ class LineFollower(Node):
 			middle_x = (middle_x_left + middle_x_right) / 2
 			deviation = half_width - middle_x
 			turn = deviation / half_width
-			# esc inactive on straight
-			self.speed_mult = (SPEED_MULT_DEFAULT + self.speed_mult) / 2
-			self.prev_turn = TURN_MIN
 
 		if (self.traffic_status.stop_sign is True):
 			speed = SPEED_MIN
 			print("stop sign detected")
 
 		if self.ramp_detected is True:
-			speed = SPEED_50_PERCENT
 			# TODO: participants need to decide action on detection of ramp/bridge.
 			print("ramp/bridge detected")
 
 		if self.obstacle_detected is True:
-			speed = SPEED_25_PERCENT
 			# TODO: participants need to decide action on detection of obstacle.
 			print("obstacle detected")
 
@@ -201,58 +174,41 @@ class LineFollower(Node):
 		Returns:
 			None
 	"""
-
 	def lidar_callback(self, message):
+		# TODO: participants need to implement logic for detection of ramps and obstacles.
 
 		shield_vertical = 4
 		shield_horizontal = 1
 		theta = math.atan(shield_vertical / shield_horizontal)
 
-		# Filter out invalid range readings
-		valid_ranges = [r for r in message.ranges if message.range_min <= r < message.range_max]
+		# Get the middle half of the ranges array returned by the LIDAR.
+		length = float(len(message.ranges))
+		ranges = message.ranges[int(length / 4): int(3 * length / 4)]
 
-		# Get the middle half of the valid ranges
-		length = float(len(valid_ranges))
-		ranges = valid_ranges[int(length / 4): int(3 * length / 4)]
-
-		# Ramp detection using all ranges
-		if len(ranges) >= MIN_POINTS_FOR_GROUND:
-			angles = np.arange(len(ranges)) * message.angle_increment
-			x = np.array(ranges) * np.cos(angles)
-			y = np.array(ranges) * np.sin(angles)
-			
-			reg = LinearRegression().fit(x.reshape(-1, 1), y)
-			r_squared = reg.score(x.reshape(-1, 1), y)
-			
-			self.ramp_detected = r_squared > R_SQUARED_THRESHOLD
-		else:
-			self.ramp_detected = False
-
-		# Obstacle detection
-		self.obstacle_detected = False
+		# Separate the ranges into the part in the front and the part on the sides.
 		length = float(len(ranges))
-		front_ranges = ranges[int(length * theta / math.pi): int(length * (math.pi - theta) / math.pi)]
-		side_ranges_right = ranges[0: int(length * theta / math.pi)]
-		side_ranges_left = ranges[int(length * (math.pi - theta) / math.pi):]
+		front_ranges = ranges[int(length * theta / PI): int(length * (PI - theta) / PI)]
+		side_ranges_right = ranges[0: int(length * theta / PI)]
+		side_ranges_left = ranges[int(length * (PI - theta) / PI):]
 
-		# Process front ranges
-		angle = theta - math.pi / 2
+		# process front ranges.
+		angle = theta - PI / 2
 		for i in range(len(front_ranges)):
-			if front_ranges[i] < THRESHOLD_OBSTACLE_VERTICAL:
-				print("frontobj")
+			if (front_ranges[i] < THRESHOLD_OBSTACLE_VERTICAL):
 				self.obstacle_detected = True
 				return
+
 			angle += message.angle_increment
 
-		# Process side ranges
+		# process side ranges.
 		side_ranges_left.reverse()
 		for side_ranges in [side_ranges_left, side_ranges_right]:
 			angle = 0.0
 			for i in range(len(side_ranges)):
-				if side_ranges[i] < THRESHOLD_OBSTACLE_HORIZONTAL:
-					print("sideobj")
+				if (side_ranges[i] < THRESHOLD_OBSTACLE_HORIZONTAL):
 					self.obstacle_detected = True
 					return
+
 				angle += message.angle_increment
 
 		self.obstacle_detected = False
