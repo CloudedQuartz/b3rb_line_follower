@@ -200,16 +200,17 @@ class LineFollower(Node):
 		# filter ranges now
 		#use message.ranges as we dont care about only middle half
 		angles = np.arange(len(message.ranges)) * message.angle_increment
-		valid_ranges = [(r, phi) for (r, phi) in zip(message.ranges, angles) if message.range_min <= r < message.range_max]
+		valid_ranges = [[(r, phi) if message.range_min <= r < message.range_max else (float('inf'), phi) for (r, phi) in zip(message.ranges, angles)] #dont skip over invalid ranges, use inf
+]
 
 		# Ramp detection using all ranges
 		if len(valid_ranges) >= MIN_POINTS_FOR_GROUND:
-			x = np.array(valid_ranges[1]) * np.cos(valid_ranges[1])
-			y = np.array(valid_ranges[0]) * np.sin(angles[1])
-
+			x = np.array(valid_ranges[0]) * np.cos(valid_ranges[1])
+			y = np.array(valid_ranges[0]) * np.sin(valid_ranges[1])
+			print([i[0] for i in valid_ranges])
 			reg = LinearRegression().fit(x.reshape(-1, 1), y)
 			r_squared = reg.score(x.reshape(-1, 1), y)
-
+			print("r2", r_squared)
 			self.ramp_detected = r_squared > R_SQUARED_THRESHOLD
 		else:
 			self.ramp_detected = False
