@@ -157,6 +157,7 @@ class LineFollower(Node):
 			print("ramp/bridge detected")
 
 		if self.obstacle_detected is True:
+			speed = SPEED_25_PERCENT
 			# TODO: participants need to decide action on detection of obstacle.
 			print("obstacle detected")
 
