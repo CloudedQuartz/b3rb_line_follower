@@ -160,7 +160,7 @@ class LineFollower(Node):
 		if self.obstacle_detected is True:
 			speed = SPEED_25_PERCENT
 			# TODO: participants need to decide action on detection of obstacle.
-			print("obstacle detected")
+			# print("obstacle detected")
 
 		self.rover_move_manual_mode(speed, turn)
 
@@ -200,14 +200,12 @@ class LineFollower(Node):
 		# filter ranges now
 		#use message.ranges as we dont care about only middle half
 		angles = np.arange(len(message.ranges)) * message.angle_increment
-		valid_ranges = [[(r, phi) if message.range_min <= r < message.range_max else (float('inf'), phi) for (r, phi) in zip(message.ranges, angles)] #dont skip over invalid ranges, use inf
-]
+		valid_ranges = [(r, phi)for (r, phi) in zip(message.ranges, angles) if message.range_min <= r < message.range_max]
 
 		# Ramp detection using all ranges
 		if len(valid_ranges) >= MIN_POINTS_FOR_GROUND:
-			x = np.array(valid_ranges[0]) * np.cos(valid_ranges[1])
-			y = np.array(valid_ranges[0]) * np.sin(valid_ranges[1])
-			print([i[0] for i in valid_ranges])
+			x = np.array([i[0]for i in valid_ranges]) * np.cos([i[1] for i in valid_ranges])
+			y = np.array([i[0]for i in valid_ranges]) * np.sin([i[1] for i in valid_ranges])
 			reg = LinearRegression().fit(x.reshape(-1, 1), y)
 			r_squared = reg.score(x.reshape(-1, 1), y)
 			print("r2", r_squared)
