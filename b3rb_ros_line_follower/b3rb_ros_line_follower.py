@@ -49,6 +49,7 @@ THRESHOLD_OBSTACLE_HORIZONTAL = 0.25
 MIN_POINTS_FOR_GROUND = 10  # Minimum number of points to consider for ground detection
 R_SQUARED_THRESHOLD = 0.9  # Minimum R-squared value for good line fit
 
+SPEED_MULT_DEFAULT = 1.0
 
 class LineFollower(Node):
 	""" Initializes line follower node with the required publishers and subscriptions.
@@ -91,6 +92,11 @@ class LineFollower(Node):
 		self.obstacle_detected = False
 
 		self.ramp_detected = False
+
+		# speed multiplier (primitive ESC)
+		self.speed_mult = SPEED_MULT_DEFAULT
+		self.prev_turn = TURN_MIN
+
 
 	""" Operates the rover in manual mode by publishing on /cerebri/in/joy.
 
@@ -138,7 +144,16 @@ class LineFollower(Node):
 			# Calculate the magnitude of the x-component of the vector.
 			deviation = vectors.vector_1[1].x - vectors.vector_1[0].x
 			turn = deviation / vectors.image_width
+			if turn < self.prev_turn and self.speed_mult < 1.5:
+				print("ESC ACC", self.speed_mult)
+				self.speed_mult += 0.03
+			elif turn >= self.prev_turn and self.speed_mult > 0.4:
+				print("ESC BRAKING")
+				self.speed_mult -= 0.05
 			speed = (1.5 * TURN_MAX - turn) / (1.5 * TURN_MAX)
+			speed *= self.speed_mult
+			self.prev_turn = turn
+
 
 		if (vectors.vector_count == 2):  # straight.
 			# Calculate the middle point of the x-components of the vectors.
@@ -147,6 +162,10 @@ class LineFollower(Node):
 			middle_x = (middle_x_left + middle_x_right) / 2
 			deviation = half_width - middle_x
 			turn = deviation / half_width
+			# esc inactive on straight
+			self.speed_mult = (SPEED_MULT_DEFAULT + self.speed_mult) / 2
+			self.prev_turn = TURN_MIN
+
 
 		if (self.traffic_status.stop_sign is True):
 			speed = SPEED_MIN
