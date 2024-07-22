@@ -161,6 +161,7 @@ class LineFollower(Node):
 
 
 		if (vectors.vector_count == 2):  # straight.
+			self.smooth_speed = False
 			# Calculate the middle point of the x-components of the vectors.
 			middle_x_left = (vectors.vector_1[0].x + vectors.vector_1[1].x) / 2
 			middle_x_right = (vectors.vector_2[0].x + vectors.vector_2[1].x) / 2
@@ -178,6 +179,7 @@ class LineFollower(Node):
 
 		if self.ramp_detected is True:
 			speed = SPEED_50_PERCENT
+			self.smooth_speed = True
 			# TODO: participants need to decide action on detection of ramp/bridge.
 			print("ramp/bridge detected")
 
