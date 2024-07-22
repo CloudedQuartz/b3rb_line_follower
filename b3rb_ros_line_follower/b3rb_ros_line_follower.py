@@ -51,6 +51,8 @@ R_SQUARED_THRESHOLD = 0.8  # Minimum R-squared value for good line fit
 
 SPEED_MULT_DEFAULT = 1.0
 
+SPEED_SMOOTHER_STEPS = 100
+
 class LineFollower(Node):
 	""" Initializes line follower node with the required publishers and subscriptions.
 
@@ -96,6 +98,9 @@ class LineFollower(Node):
 		# speed multiplier (primitive ESC)
 		self.speed_mult = SPEED_MULT_DEFAULT
 		self.prev_turn = TURN_MIN
+
+		self.speed_smoother_steps = SPEED_SMOOTHER_STEPS
+		self.smooth_speed = False
 
 
 	""" Operates the rover in manual mode by publishing on /cerebri/in/joy.
@@ -180,6 +185,12 @@ class LineFollower(Node):
 			speed = SPEED_25_PERCENT
 			# TODO: participants need to decide action on detection of obstacle.
 			# print("obstacle detected")
+
+		self.speed_smoother_steps += (speed - (self.speed_smoother_steps * SPEED_MAX / SPEED_SMOOTHER_STEPS))
+		if (self.smooth_speed and abs(speed - self.speed_smoother_steps * SPEED_MAX / SPEED_SMOOTHER_STEPS) > 0.1):
+			speed = self.speed_smoother_steps * SPEED_MAX / SPEED_SMOOTHER_STEPS
+		else:
+			self.smooth_speed = False
 
 		self.rover_move_manual_mode(speed, turn)
 
