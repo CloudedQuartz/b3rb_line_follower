@@ -138,6 +138,7 @@ class LineFollower(Node):
 			# Calculate the magnitude of the x-component of the vector.
 			deviation = vectors.vector_1[1].x - vectors.vector_1[0].x
 			turn = deviation / vectors.image_width
+			speed = (1.5 * TURN_MAX - abs(turn)) / (1.5 * TURN_MAX)
 
 		if (vectors.vector_count == 2):  # straight.
 			# Calculate the middle point of the x-components of the vectors.
