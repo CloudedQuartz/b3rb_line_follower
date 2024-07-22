@@ -181,7 +181,7 @@ class LineFollower(Node):
 			speed = SPEED_50_PERCENT
 			self.smooth_speed = True
 			# TODO: participants need to decide action on detection of ramp/bridge.
-			print("ramp/bridge detected")
+			# print("ramp/bridge detected")
 
 		if self.obstacle_detected is True:
 			speed = SPEED_25_PERCENT
@@ -240,7 +240,7 @@ class LineFollower(Node):
 			y = np.array([i[0]for i in valid_ranges]) * np.sin([i[1] for i in valid_ranges])
 			reg = LinearRegression().fit(x.reshape(-1, 1), y)
 			r_squared = reg.score(x.reshape(-1, 1), y)
-			print("r2", r_squared)
+			# print("r2", r_squared)
 			self.ramp_detected = r_squared > R_SQUARED_THRESHOLD
 		else:
 			self.ramp_detected = False
