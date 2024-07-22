@@ -144,10 +144,10 @@ class LineFollower(Node):
 			# Calculate the magnitude of the x-component of the vector.
 			deviation = vectors.vector_1[1].x - vectors.vector_1[0].x
 			turn = deviation / vectors.image_width
-			if turn < self.prev_turn and self.speed_mult < 1.5:
+			if turn <= self.prev_turn and self.speed_mult < 1.5:
 				print("ESC ACC", self.speed_mult)
 				self.speed_mult += 0.03
-			elif turn >= self.prev_turn and self.speed_mult > 0.4:
+			elif turn > self.prev_turn and self.speed_mult > 0.4:
 				print("ESC BRAKING")
 				self.speed_mult -= 0.05
 			speed = (1.5 * TURN_MAX - turn) / (1.5 * TURN_MAX)
