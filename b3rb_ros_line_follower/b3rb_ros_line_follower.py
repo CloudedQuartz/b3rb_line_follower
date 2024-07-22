@@ -47,7 +47,7 @@ THRESHOLD_OBSTACLE_VERTICAL = 1.0
 THRESHOLD_OBSTACLE_HORIZONTAL = 0.25
 
 MIN_POINTS_FOR_GROUND = 10  # Minimum number of points to consider for ground detection
-R_SQUARED_THRESHOLD = 0.9  # Minimum R-squared value for good line fit
+R_SQUARED_THRESHOLD = 0.8  # Minimum R-squared value for good line fit
 
 SPEED_MULT_DEFAULT = 1.0
 
