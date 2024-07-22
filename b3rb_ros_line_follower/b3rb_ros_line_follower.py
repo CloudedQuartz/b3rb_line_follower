@@ -152,7 +152,7 @@ class LineFollower(Node):
 			if turn <= self.prev_turn and self.speed_mult < 1.5:
 				print("ESC ACC", self.speed_mult)
 				self.speed_mult += 0.03
-			elif turn > self.prev_turn and self.speed_mult > 0.4:
+			elif turn > self.prev_turn and self.speed_mult > 0.1:
 				print("ESC BRAKING")
 				self.speed_mult -= 0.05
 			speed = (1.5 * TURN_MAX - turn) / (1.5 * TURN_MAX)
