@@ -47,10 +47,10 @@ THRESHOLD_OBSTACLE_VERTICAL = 1.0
 THRESHOLD_OBSTACLE_HORIZONTAL = 0.25
 
 MIN_POINTS_FOR_GROUND = 10  # Minimum number of points to consider for ground detection
-R_SQUARED_THRESHOLD = 0.8  # Minimum R-squared value for good line fit
+R_SQUARED_THRESHOLD = 0.9  # Minimum R-squared value for good line fit
 
 SPEED_MULT_DEFAULT = 1.0
-SPEED_SMOOTHER_STEPS = 100
+
 class LineFollower(Node):
 	""" Initializes line follower node with the required publishers and subscriptions.
 
@@ -97,8 +97,6 @@ class LineFollower(Node):
 		self.speed_mult = SPEED_MULT_DEFAULT
 		self.prev_turn = TURN_MIN
 
-		self.speed_smoother_steps = SPEED_SMOOTHER_STEPS
-		self.smooth_speed = False
 
 	""" Operates the rover in manual mode by publishing on /cerebri/in/joy.
 
@@ -146,35 +144,27 @@ class LineFollower(Node):
 			# Calculate the magnitude of the x-component of the vector.
 			deviation = vectors.vector_1[1].x - vectors.vector_1[0].x
 			turn = deviation / vectors.image_width
-			if turn <= self.prev_turn and self.speed_mult < 1.5:
+			if turn < self.prev_turn and self.speed_mult < 1.5:
 				print("ESC ACC", self.speed_mult)
 				self.speed_mult += 0.03
-				if (((1.5 * TURN_MAX - turn) / (2 * TURN_MAX) * self.speed_mult) > SPEED_SMOOTHER_STEPS):
-					self.smooth_speed = True
-			elif turn > self.prev_turn and self.speed_mult > 0.2:
+			elif turn >= self.prev_turn and self.speed_mult > 0.4:
 				print("ESC BRAKING")
-				self.smooth_speed = False
-				if self.speed_mult > 1:
-					self.speed_mult = 1.
-				self.speed_mult -= 0.06
-			speed = (1.5 * TURN_MAX - turn) / (2 * TURN_MAX)
+				self.speed_mult -= 0.05
+			speed = (1.5 * TURN_MAX - turn) / (1.5 * TURN_MAX)
+			speed *= self.speed_mult
 			self.prev_turn = turn
 
 
 		if (vectors.vector_count == 2):  # straight.
-			self.smooth_speed = False
 			# Calculate the middle point of the x-components of the vectors.
 			middle_x_left = (vectors.vector_1[0].x + vectors.vector_1[1].x) / 2
 			middle_x_right = (vectors.vector_2[0].x + vectors.vector_2[1].x) / 2
 			middle_x = (middle_x_left + middle_x_right) / 2
 			deviation = half_width - middle_x
-			turn = 2 * deviation / half_width
+			turn = deviation / half_width
 			# esc inactive on straight
 			self.speed_mult = (SPEED_MULT_DEFAULT + self.speed_mult) / 2
 			self.prev_turn = TURN_MIN
-		speed *= self.speed_mult
-		speed = min(speed, SPEED_MAX)
-
 
 
 		if (self.traffic_status.stop_sign is True):
@@ -183,23 +173,14 @@ class LineFollower(Node):
 
 		if self.ramp_detected is True:
 			speed = SPEED_50_PERCENT
-			self.smooth_speed = True
 			# TODO: participants need to decide action on detection of ramp/bridge.
-			# print("ramp/bridge detected")
+			print("ramp/bridge detected")
 
 		if self.obstacle_detected is True:
-			pass
 			speed = SPEED_25_PERCENT
 			# TODO: participants need to decide action on detection of obstacle.
 			# print("obstacle detected")
 
-		self.speed_smoother_steps += (speed - (self.speed_smoother_steps * SPEED_MAX / SPEED_SMOOTHER_STEPS)) * 10
-		if (self.smooth_speed and abs(speed - self.speed_smoother_steps * SPEED_MAX / SPEED_SMOOTHER_STEPS) > 0.1):
-			print("smoothing", speed, self.speed_smoother_steps)
-			speed = self.speed_smoother_steps * SPEED_MAX / SPEED_SMOOTHER_STEPS
-		else:
-			self.smooth_speed = False
-		
 		self.rover_move_manual_mode(speed, turn)
 
 	""" Updates instance member with traffic status message received from /traffic_status.
@@ -246,7 +227,7 @@ class LineFollower(Node):
 			y = np.array([i[0]for i in valid_ranges]) * np.sin([i[1] for i in valid_ranges])
 			reg = LinearRegression().fit(x.reshape(-1, 1), y)
 			r_squared = reg.score(x.reshape(-1, 1), y)
-			# print("r2", r_squared)
+			print("r2", r_squared)
 			self.ramp_detected = r_squared > R_SQUARED_THRESHOLD
 		else:
 			self.ramp_detected = False
