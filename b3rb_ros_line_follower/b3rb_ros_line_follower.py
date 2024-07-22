@@ -163,7 +163,7 @@ class LineFollower(Node):
 			deviation = half_width - middle_x
 			turn = deviation / half_width
 			# esc inactive on straight
-			self.speed_mult = (SPEED_MULT_DEFAULT + self.speed_mult) / 2
+			self.speed_mult = SPEED_MULT_DEFAULT
 			self.prev_turn = TURN_MIN
 
 
